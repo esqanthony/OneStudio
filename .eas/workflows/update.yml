@@ -1,0 +1,15 @@
+# Publishes the JS bundle as an over-the-air update on every push to main.
+# Builds only pick up updates whose runtime fingerprint matches, so an update
+# that needs new native code is ignored until the matching TestFlight build lands.
+name: Publish OTA update
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  update:
+    name: Publish update (production channel)
+    type: update
+    params:
+      channel: production

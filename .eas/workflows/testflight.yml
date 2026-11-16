@@ -1,0 +1,30 @@
+# Builds the iOS app on EAS and submits it to TestFlight.
+# Runs only when something native changes; JS-only changes ship via update.yml.
+name: Build and submit to TestFlight
+
+on:
+  push:
+    branches: ['main']
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'app.config.ts'
+      - 'eas.json'
+      - 'assets/**'
+      - 'modules/**'
+      - '.eas/workflows/testflight.yml'
+
+jobs:
+  build_ios:
+    name: Build iOS (production)
+    type: build
+    params:
+      platform: ios
+      profile: production
+
+  submit_ios:
+    name: Submit to TestFlight
+    needs: [build_ios]
+    type: submit
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}

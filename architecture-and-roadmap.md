@@ -104,18 +104,18 @@ compose(project: EditDecisionList, opts: { resolution: '1080p' | '4k'; fps: 30 |
 
 ```
 OneStudio/
-├── app/                          # Expo Router routes (screens only, thin)
-│   ├── _layout.tsx               # Providers: theme, RevenueCat, Supabase, gesture root
-│   ├── (tabs)/
-│   │   ├── _layout.tsx
-│   │   ├── index.tsx             # Projects list
-│   │   └── settings.tsx          # Account, subscription, legal, delete account
-│   ├── record/[projectId].tsx    # Camera
-│   ├── edit/[projectId].tsx      # Timeline editor
-│   ├── export/[projectId].tsx    # Export + share / Copy Caption & Open App
-│   ├── paywall.tsx               # Modal
-│   └── auth.tsx                  # Optional Sign in with Apple
 ├── src/
+│   ├── app/                      # Expo Router routes (SDK 58 convention). Screens only, thin.
+│   │   ├── _layout.tsx           # Providers: theme, RevenueCat, Supabase, gesture root
+│   │   ├── (tabs)/
+│   │   │   ├── _layout.tsx       # Native tabs
+│   │   │   ├── index.tsx         # Projects list
+│   │   │   └── settings.tsx      # Account, subscription, legal, delete account, build/update info
+│   │   ├── record/[projectId].tsx    # Camera
+│   │   ├── edit/[projectId].tsx      # Timeline editor
+│   │   ├── export/[projectId].tsx    # Export + share / Copy Caption & Open App
+│   │   ├── paywall.tsx           # Modal
+│   │   └── auth.tsx              # Optional Sign in with Apple
 │   ├── features/
 │   │   ├── camera/               # Segmented recorder, progress bar, undo, safe zones
 │   │   ├── editor/               # Timeline, trim handles, split, reorder, text overlays
@@ -130,22 +130,20 @@ OneStudio/
 │   │   ├── platforms.ts          # Safe-zone specs, caption limits, URL schemes per platform
 │   │   └── edl.ts                # Edit decision list types + pure functions (unit-tested)
 │   ├── stores/                   # zustand stores (editor + undo history)
-│   └── theme/                    # Colors / typography tokens (dark, high contrast)
+│   ├── theme/tokens.js           # Color tokens shared by Tailwind and code
+│   └── global.css                # Tailwind entry
 ├── modules/
 │   └── onestudio-video/          # Local Expo Module (Swift, AVFoundation)
-│       ├── ios/
-│       ├── src/                  # TS bindings
-│       └── expo-module.config.json
 ├── supabase/
 │   ├── migrations/               # SQL: profiles, projects metadata, RLS policies
-│   └── functions/
-│       └── delete-account/       # Edge Function (needed for App Store 5.1.1(v))
-├── .eas/workflows/               # EAS Workflows: build + submit on push (no CLI needed)
+│   └── functions/delete-account/ # Edge Function (App Store 5.1.1(v))
+├── .eas/workflows/               # testflight.yml (native changes), update.yml (OTA on every push)
+├── .github/workflows/ci.yml      # Typecheck, lint, iOS bundle on every push
+├── docs/setup-from-iphone.md     # One-time account and pipeline setup, all from the phone
 ├── assets/                       # Icon, splash, fonts
 ├── app.config.ts
 ├── eas.json
 ├── tailwind.config.js
-├── global.css
 └── architecture-and-roadmap.md
 ```
 
@@ -225,7 +223,7 @@ Your proposed v1 is right. I'd make three small changes:
 4. Optional: a **development build** (`expo-dev-client`, internal distribution). Register your iPhone once by opening a link from `eas device:create` in Safari, and turn on Developer Mode in iOS Settings. It loads updates from EAS Update channels. A Metro dev server running in a cloud container generally can't reach your phone, so expect TestFlight + EAS Update to be the main loop.
 5. Crash logs: TestFlight → Feedback/Crashes in App Store Connect (works on mobile web). Sentry (`@sentry/react-native`, free tier) is optional from Phase 2.
 
-**One-time setup needed from you:** create an Expo access token (expo.dev → Account Settings → Access Tokens) and add it as `EXPO_TOKEN`, either in Expo's GitHub integration or as a secret in this cloud environment. Never paste it into chat. EAS creates and manages Apple certificates and provisioning profiles for you, after you sign in to Apple once during the first build's credentials step. That step can be done from the expo.dev website.
+**One-time setup needed from you:** follow `docs/setup-from-iphone.md`. You connect the GitHub repo to your Expo project and upload an App Store Connect API key to expo.dev, so builds run on EAS without anyone using the CLI. An Expo access token is needed only as a fallback, if Claude must run `eas` from a cloud session (Expo's API host is blocked from this cloud environment by default).
 
 ### Phase 0: Skeleton and pipeline (≈1–2 days)
 - `create-expo-app` (SDK 58, TypeScript), Expo Router tabs, NativeWind dark theme tokens, app icon placeholder
