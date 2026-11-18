@@ -18,5 +18,6 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx expo lint
+      - run: npx jest
       - name: Bundle iOS JavaScript
         run: npx expo export --platform ios --output-dir dist

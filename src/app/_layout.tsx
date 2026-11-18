@@ -32,8 +32,21 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.canvas }}>
       <ThemeProvider value={theme}>
         <StatusBar style="light" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="(tabs)" />
+        <Stack
+          screenOptions={{
+            headerStyle: { backgroundColor: colors.canvas },
+            headerTintColor: colors.ink,
+            contentStyle: { backgroundColor: colors.canvas },
+          }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="record"
+            options={{ headerShown: false, presentation: 'fullScreenModal', gestureEnabled: false }}
+          />
+          <Stack.Screen name="edit/[sessionId]" options={{ title: 'Your video', headerBackTitle: 'Projects' }} />
+          <Stack.Screen name="scripts/index" options={{ presentation: 'modal', title: 'Scripts' }} />
+          <Stack.Screen name="scripts/[scriptId]" options={{ presentation: 'modal', title: 'Edit script' }} />
+          <Stack.Screen name="teleprompter-settings" options={{ presentation: 'modal', title: 'Teleprompter' }} />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>

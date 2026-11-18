@@ -22,6 +22,10 @@ const config: ExpoConfig = {
     bundleIdentifier: IOS_BUNDLE_ID,
     supportsTablet: false,
     config: { usesNonExemptEncryption: false },
+    infoPlist: {
+      NSCameraUsageDescription: 'OneStudio uses the camera to record your video takes.',
+      NSMicrophoneUsageDescription: 'OneStudio records sound with your video takes.',
+    },
   },
   android: {
     package: IOS_BUNDLE_ID,
@@ -34,6 +38,14 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    [
+      'expo-media-library',
+      {
+        photosPermission: 'OneStudio saves your finished videos to Photos.',
+        savePhotosPermission: 'OneStudio saves your finished videos to Photos.',
+        isAccessMediaLocationEnabled: false,
+      },
+    ],
     [
       'expo-splash-screen',
       {

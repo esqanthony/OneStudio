@@ -25,12 +25,16 @@ EXPO_OFFLINE=1 npx expo lint                # lint
 EXPO_OFFLINE=1 npx expo export --platform ios --output-dir /tmp/os-export   # proves the JS bundle builds
 EXPO_OFFLINE=1 npx expo prebuild --platform ios --no-install --clean && rm -rf ios   # proves config plugins apply
 ```
-Run typecheck, lint and the iOS export before declaring a task done.
+Run typecheck, lint, `npm test` and the iOS export before declaring a task done.
 
 ## Conventions
 - Routes: `src/app/` (Expo Router). Screens stay thin; logic goes in `src/features/<feature>/`.
 - Styling: NativeWind 4 (`className`). Colors only from `src/theme/tokens.js` (canvas, surface, raised, line, ink,
   muted, record, accent, accent-ink, danger). The UI is dark only.
 - Imports use the `@/` alias for `src/`.
-- Do not add `expo-av` (deprecated) or any ffmpeg-kit package (retired). Video processing is AVFoundation in
-  `modules/onestudio-video`.
+- Do not add `expo-av` (deprecated) or any ffmpeg-kit package (retired). Capture and video processing are
+  AVFoundation in `modules/onestudio-camera` (imported as `@modules/onestudio-camera`).
+- Swift can't be compiled in cloud sessions; only an EAS build proves it. Keep the Swift small, mirror patterns
+  from Expo's own modules in `node_modules/expo-*/ios`, and put logic that can be tested in TypeScript.
+- `expo-media-library`'s old functions (`saveToLibraryAsync`, …) throw at runtime in SDK 58. Use `Asset.create()`.
+- Pure logic gets Jest tests (`npm test`), e.g. `src/features/recording/__tests__`.

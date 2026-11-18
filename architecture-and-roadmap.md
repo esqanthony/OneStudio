@@ -38,7 +38,7 @@ Expo Go **cannot** run this app, because the camera and video modules are custom
 | Routing | `expo-router` | 58.0.31 · Nov 2026 · bundled | File-based routes, typed links |
 | Styling | `nativewind` + `tailwindcss@3.4.x` | 4.2.7 · Sep 2026 | Stable line. **NativeWind 5 is still a release candidate** (5.0.0-rc.1, Nov 2026), so we stay on 4.x and upgrade when 5 is stable. |
 | Animation / gestures | `react-native-reanimated`, `react-native-gesture-handler`, `react-native-worklets` | 4.7.1 / ~3.3 / 0.13 · bundled | Timeline scrubbing, trim handles, drag-to-reorder |
-| **Camera** | `react-native-vision-camera` + `react-native-nitro-modules` + `react-native-nitro-image` | 5.2.4 · Oct 2026 | Format, FPS and HDR control, zoom, stabilization. Needed now for 60fps and later for 4K/60. v5 is a rewrite (Apr 2026) with frequent releases since then. **Fallback:** `expo-camera` (bundled, 58.0.14), which records fine but gives less control over format and FPS. |
+| **Camera** | **Our own local Expo Module (Swift + AVFoundation)** at `modules/onestudio-camera` | n/a: our code | _Changed 2026-11-18._ The recording spec needs iOS 26's `AVCaptureDevice.setDynamicAspectRatio` (landscape from the iPhone 17 / iPhone Air front camera while the phone is upright). VisionCamera v5 doesn't expose it, so capture and take-joining live in one small native module. |
 | **Video processing / export** | **Our own local Expo Module (Swift + AVFoundation)** at `modules/onestudio-video` | n/a: our code, compiled by EAS | See §1.3. Replaces ffmpeg-kit. |
 | Playback (single clips) | `expo-video` | 58.0.14 · bundled | Clip review and the media picker |
 | Thumbnails / filmstrip | `expo-video-thumbnails` (or native `AVAssetImageGenerator` in our module) | 58.0.3 · bundled | |
@@ -133,7 +133,7 @@ OneStudio/
 │   ├── theme/tokens.js           # Color tokens shared by Tailwind and code
 │   └── global.css                # Tailwind entry
 ├── modules/
-│   └── onestudio-video/          # Local Expo Module (Swift, AVFoundation)
+│   └── onestudio-camera/         # Local Expo Module (Swift, AVFoundation): capture, takes, joining
 ├── supabase/
 │   ├── migrations/               # SQL: profiles, projects metadata, RLS policies
 │   └── functions/delete-account/ # Edge Function (App Store 5.1.1(v))
@@ -155,7 +155,7 @@ OneStudio/
 
 | Capability | On-device | Cloud | Recommendation |
 |---|---|---|---|
-| Recording | ✅ VisionCamera | — | On-device |
+| Recording | ✅ `modules/onestudio-camera` (AVFoundation) | — | On-device |
 | Trim / split / reorder / speed | ✅ AVFoundation | — | On-device |
 | Text overlays, watermark | ✅ Skia + AVFoundation | — | On-device |
 | Export 1080p (and later 4K/60) | ✅ Hardware encoder. A 60s 1080p export takes a few seconds on recent iPhones. | Cloud rendering is costly and slow to upload | On-device |
@@ -189,7 +189,6 @@ Your proposed v1 is right. I'd make three small changes:
 | Feature | Target | Why |
 |---|---|---|
 | Auto-captions | v1.1 | Prove Apple Speech quality first; burned-in captions need a styling UI |
-| Teleprompter | v1.1 | Cheap (scrolling text over the camera), but not core |
 | Speed changes | v1.1 | Easy in AVFoundation, but adds timeline UI complexity |
 | Voiceover | v1.2 | |
 | Music (user-imported) | v1.2 | Licensing |
@@ -232,17 +231,22 @@ Your proposed v1 is right. I'd make three small changes:
 - **Test on iPhone:** OneStudio installs from TestFlight and shows the Projects / Settings tabs in dark UI. Push a text change and watch it arrive through EAS Update.
 - _Exit criteria:_ the pipeline works end to end from a git push.
 
-### Phase 1: Camera (≈1 week)
-- VisionCamera v5 with permissions, 9:16 preview, front/back, tap-to-focus, pinch zoom
-- Segmented recording: progress bar with segment markers, undo last segment, max-length caps, haptics, keep-awake
-- Safe-zone overlays (TikTok, Reels, Shorts) from `src/lib/platforms.ts`
-- Projects saved to SQLite + files; review clips with `expo-video`
-- **Spike first:** if VisionCamera v5 fails to build on SDK 58, switch to `expo-camera` (decision within the first day)
-- **Test on iPhone:** record 3 segments, undo one, kill the app, reopen, and the project is still there.
+### Phase 1: Recording screen (built 2026-11-18, per the recording spec)
+- `modules/onestudio-camera`: AVFoundation capture, one file per take, take joiner (AVMutableComposition → H.264 MP4)
+- Take-based recording: tap to record / tap to pause, segmented progress bar, Delete last take, Done joins takes
+  and opens the video; optional session cap (1 / 3 / 10 min); session survives the app being killed
+- 9:16 or 16:9 while holding the phone upright: native landscape on the iPhone 17 / Air front camera,
+  otherwise a centre 16:9 crop from 4K vertical video (with a resolution warning). Locked per session.
+- Teleprompter (moved up from v1.1): manual scroll, size / colour / background / spacing / reading line,
+  saved scripts and paste-in, scroll position kept between takes; panel above the preview in 16:9,
+  overlay in 9:16
+- Preview screen with Save to Photos and Share (the editor proper is Phase 3)
+- Safe-zone overlays moved to Phase 3 (editor)
+- **Test on iPhone:** `docs/recording-test-plan.md`
 
-### Phase 2: Native video module + export (≈1–1.5 weeks)
-_Done before the editor because it's the riskiest piece._
-- `modules/onestudio-video`: concatenate clips → 1080p30 H.264 MP4 with progress and cancel
+### Phase 2: Export (≈1 week)
+_Joining already exists from Phase 1; this phase adds the watermark and export presets._
+- Extend the take joiner into the export pipeline (1080p30 / 1080p60) with progress and cancel
 - Watermark compositing (Skia-rendered PNG)
 - Save to Photos, share sheet, "Copy Caption & Open App" (caption field on the export screen)
 - **Test on iPhone:** record 3 clips, export, the video appears in Photos with the watermark, then share it to TikTok/IG drafts.
@@ -269,7 +273,7 @@ _Done before the editor because it's the riskiest piece._
 - **Test on iPhone:** a full external TestFlight pass with a few creator friends before submitting.
 
 ### After v1
-- **v1.1:** captions (Apple Speech → whisper.rn if needed), teleprompter, speed
+- **v1.1:** captions (Apple Speech → whisper.rn if needed), teleprompter auto-scroll, speed
 - **v1.2:** voiceover, user-imported music, 4K/60, per-platform caption adaptation
 - **v2:** multi-track timeline; direct posting (one platform at a time, starting with YouTube, which has the most predictable API approval)
 
@@ -311,7 +315,7 @@ _Prices are from my knowledge as of late 2026. Check each vendor's pricing page 
 
 ## 6. Open decisions for you
 
-1. **Camera library:** VisionCamera v5 (recommended) or `expo-camera` (simpler, less control)?
+1. ~~Camera library~~ Decided: custom AVFoundation module (needed for native landscape on iPhone 17 / Air).
 2. **Supabase in v1:** optional Sign in with Apple + metadata sync (as planned), or push Supabase to v1.1 for the smallest first release?
 3. **Free-tier limits:** watermark + 1080p30 only, or also a project cap?
 4. **Bundle ID / app name availability:** check that "OneStudio" is free in App Store Connect when you create the app record. If it's taken, you'll need a variant like "OneStudio: Creator Video".
