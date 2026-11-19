@@ -37,6 +37,12 @@ export type TakeFinishedEvent = {
   error?: string;
 };
 
+/** Normalized (0–1) rectangle in the output frame, origin top-left. */
+export type OverlayRect = { x: number; y: number; width: number; height: number };
+
+/** An image drawn on top of the joined video between two times, fitted into `rect`. */
+export type JoinOverlay = { imageUri: string; startMs: number; endMs: number; rect: OverlayRect };
+
 export type VideoInfo = { durationMs: number; width: number; height: number };
 export type JoinResult = VideoInfo & { uri: string };
 
@@ -47,7 +53,12 @@ declare class OneStudioCameraModuleType extends NativeModule<OneStudioCameraEven
   requestPermissionsAsync(): Promise<{ camera: boolean; microphone: boolean }>;
   getCapabilitiesAsync(): Promise<CameraCapabilities>;
   probeVideoAsync(uri: string): Promise<VideoInfo | null>;
-  joinTakesAsync(options: { uris: string[]; aspect: '9:16' | '16:9'; outputUri: string }): Promise<JoinResult>;
+  joinTakesAsync(options: {
+    uris: string[];
+    aspect: '9:16' | '16:9';
+    outputUri: string;
+    overlays?: JoinOverlay[];
+  }): Promise<JoinResult>;
   cancelJoinAsync(): Promise<void>;
 }
 

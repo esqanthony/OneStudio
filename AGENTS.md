@@ -37,4 +37,6 @@ Run typecheck, lint, `npm test` and the iOS export before declaring a task done.
 - Swift can't be compiled in cloud sessions; only an EAS build proves it. Keep the Swift small, mirror patterns
   from Expo's own modules in `node_modules/expo-*/ios`, and put logic that can be tested in TypeScript.
 - `expo-media-library`'s old functions (`saveToLibraryAsync`, …) throw at runtime in SDK 58. Use `Asset.create()`.
+- Config plugin permission options set to `false` delete that Info.plist key, even one set by another plugin.
+  After touching plugins, run the prebuild check and grep `ios/OneStudio/Info.plist` for the usage strings.
 - Pure logic gets Jest tests (`npm test`), e.g. `src/features/recording/__tests__`.

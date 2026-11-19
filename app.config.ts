@@ -8,6 +8,10 @@ const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '';
 const EXPO_OWNER = process.env.EXPO_OWNER ?? undefined;
 const IOS_BUNDLE_ID = process.env.IOS_BUNDLE_ID ?? 'com.esqanthony.onestudio';
 
+const CAMERA_TEXT = 'OneStudio uses the camera to record your video takes.';
+const MICROPHONE_TEXT = 'OneStudio records sound with your video takes.';
+const PHOTOS_TEXT = 'OneStudio adds slides from your Photos and saves your finished videos there.';
+
 const config: ExpoConfig = {
   name: 'OneStudio',
   slug: 'onestudio',
@@ -23,8 +27,8 @@ const config: ExpoConfig = {
     supportsTablet: false,
     config: { usesNonExemptEncryption: false },
     infoPlist: {
-      NSCameraUsageDescription: 'OneStudio uses the camera to record your video takes.',
-      NSMicrophoneUsageDescription: 'OneStudio records sound with your video takes.',
+      NSCameraUsageDescription: CAMERA_TEXT,
+      NSMicrophoneUsageDescription: MICROPHONE_TEXT,
     },
   },
   android: {
@@ -41,9 +45,18 @@ const config: ExpoConfig = {
     [
       'expo-media-library',
       {
-        photosPermission: 'OneStudio saves your finished videos to Photos.',
+        photosPermission: PHOTOS_TEXT,
         savePhotosPermission: 'OneStudio saves your finished videos to Photos.',
         isAccessMediaLocationEnabled: false,
+      },
+    ],
+    [
+      'expo-image-picker',
+      {
+        // Repeat the app's own texts: `false` here would delete them from Info.plist.
+        photosPermission: PHOTOS_TEXT,
+        cameraPermission: CAMERA_TEXT,
+        microphonePermission: MICROPHONE_TEXT,
       },
     ],
     [

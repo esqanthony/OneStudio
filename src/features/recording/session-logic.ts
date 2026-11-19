@@ -32,6 +32,9 @@ export function createSession(params: {
     scriptId: null,
     scriptScroll: {},
     showTeleprompter: true,
+    slides: [],
+    currentSlideId: null,
+    slideLayout: 'corner',
     output: null,
   };
 }
@@ -111,7 +114,16 @@ export function deleteLastTake(session: RecordingSession): {
 } {
   const removed = session.takes.at(-1) ?? null;
   if (!removed) return { session, removed: null };
-  return { session: { ...session, takes: session.takes.slice(0, -1) }, removed };
+  // Go back to the slide that was showing when the deleted take started, so the retake matches.
+  const startSlide = removed.slideEvents?.[0];
+  return {
+    session: {
+      ...session,
+      takes: session.takes.slice(0, -1),
+      currentSlideId: startSlide ? startSlide.slideId : session.currentSlideId,
+    },
+    removed,
+  };
 }
 
 export type BarSegment = { id: string; start: number; width: number };

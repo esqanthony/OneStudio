@@ -1,6 +1,23 @@
 import AVFoundation
 import ExpoModulesCore
 
+/// Normalized rectangle (0–1) in the output frame, origin top-left.
+struct OverlayRect: Record {
+  @Field var x: Double = 0
+  @Field var y: Double = 0
+  @Field var width: Double = 0
+  @Field var height: Double = 0
+}
+
+/// An image shown on top of the video between two times.
+struct OverlayOptions: Record {
+  @Field var imageUri: String = ""
+  @Field var startMs: Double = 0
+  @Field var endMs: Double = 0
+  /// Box the image is fitted into (keeping its shape).
+  @Field var rect: OverlayRect = OverlayRect()
+}
+
 /// Options for joining recorded takes into one video.
 struct JoinOptions: Record {
   /// file:// URIs of the takes, in order.
@@ -9,6 +26,8 @@ struct JoinOptions: Record {
   @Field var aspect: String = "9:16"
   /// Where to write the joined .mp4.
   @Field var outputUri: URL?
+  /// Slides drawn into the video.
+  @Field var overlays: [OverlayOptions] = []
 }
 
 public final class OneStudioCameraModule: Module {
@@ -54,9 +73,19 @@ public final class OneStudioCameraModule: Module {
       self.activeJoin = joiner
       defer { self.activeJoin = nil }
       let takes = options.uris.compactMap { URL(string: $0) }
+      let overlays = options.overlays.compactMap { item -> TakeJoiner.Overlay? in
+        guard let url = URL(string: item.imageUri), item.endMs > item.startMs else { return nil }
+        return TakeJoiner.Overlay(
+          imageURL: url,
+          start: item.startMs / 1000,
+          end: item.endMs / 1000,
+          rect: CGRect(x: item.rect.x, y: item.rect.y, width: item.rect.width, height: item.rect.height)
+        )
+      }
       return try await joiner.join(
         takes: takes,
         landscape: options.aspect == "16:9",
+        overlays: overlays,
         output: output
       ) { [weak self] progress in
         self?.sendEvent("onJoinProgress", ["progress": progress])

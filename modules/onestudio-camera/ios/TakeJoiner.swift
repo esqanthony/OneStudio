@@ -1,4 +1,6 @@
 import AVFoundation
+import QuartzCore
+import UIKit
 
 /// Joins takes, in order, into one H.264 .mp4.
 ///
@@ -16,6 +18,14 @@ final class TakeJoiner {
     exportSession?.cancelExport()
   }
 
+  /// A slide image shown from `start` to `end` seconds, fitted into `rect` (normalized, top-left origin).
+  struct Overlay {
+    let imageURL: URL
+    let start: Double
+    let end: Double
+    let rect: CGRect
+  }
+
   private struct Segment {
     let start: CMTime
     /// Moves the track's pixels into upright orientation with origin at (0, 0).
@@ -26,6 +36,7 @@ final class TakeJoiner {
   func join(
     takes: [URL],
     landscape: Bool,
+    overlays: [Overlay] = [],
     output: URL,
     progress: @escaping (Double) -> Void
   ) async throws -> [String: Any] {
@@ -108,6 +119,9 @@ final class TakeJoiner {
     let fps = max(24, min(60, Int32(frameRate.rounded())))
     videoComposition.frameDuration = CMTime(value: 1, timescale: fps)
     videoComposition.instructions = [instruction]
+    if !overlays.isEmpty {
+      videoComposition.animationTool = Self.overlayTool(overlays: overlays, renderSize: renderSize)
+    }
 
     try? FileManager.default.createDirectory(
       at: output.deletingLastPathComponent(),
@@ -156,6 +170,88 @@ final class TakeJoiner {
       "height": Int(renderSize.height),
       "durationMs": cursor.seconds * 1000
     ]
+  }
+
+  /// Draws slides over the video with Core Animation: one layer per slide segment, visible only
+  /// during its time range.
+  static func overlayTool(overlays: [Overlay], renderSize: CGSize) -> AVVideoCompositionCoreAnimationTool {
+    let frame = CGRect(origin: .zero, size: renderSize)
+    let parent = CALayer()
+    parent.frame = frame
+    // Top-left origin, matching the normalized rects from JS.
+    parent.isGeometryFlipped = true
+    let videoLayer = CALayer()
+    videoLayer.frame = frame
+    parent.addSublayer(videoLayer)
+
+    var images: [URL: CGImage] = [:]
+    for overlay in overlays {
+      let image: CGImage
+      if let cached = images[overlay.imageURL] {
+        image = cached
+      } else if let loaded = loadImage(url: overlay.imageURL, maxDimension: max(renderSize.width, renderSize.height)) {
+        images[overlay.imageURL] = loaded
+        image = loaded
+      } else {
+        continue
+      }
+
+      let box = CGRect(
+        x: overlay.rect.minX * renderSize.width,
+        y: overlay.rect.minY * renderSize.height,
+        width: overlay.rect.width * renderSize.width,
+        height: overlay.rect.height * renderSize.height
+      )
+      let fitted = aspectFit(CGSize(width: image.width, height: image.height), in: box)
+
+      let layer = CALayer()
+      layer.frame = fitted
+      layer.contents = image
+      layer.contentsGravity = .resize
+      layer.cornerRadius = min(fitted.width, fitted.height) * 0.04
+      layer.masksToBounds = true
+      layer.opacity = 0
+
+      let show = CABasicAnimation(keyPath: "opacity")
+      show.fromValue = 1
+      show.toValue = 1
+      // A beginTime of 0 means "now" to Core Animation; AVFoundation needs this constant instead.
+      show.beginTime = overlay.start <= 0 ? AVCoreAnimationBeginTimeAtZero : overlay.start
+      show.duration = overlay.end - overlay.start
+      show.isRemovedOnCompletion = false
+      layer.add(show, forKey: "visible")
+      parent.addSublayer(layer)
+    }
+
+    return AVVideoCompositionCoreAnimationTool(postProcessingAsVideoLayer: videoLayer, in: parent)
+  }
+
+  /// Loads an image upright (photos can carry an EXIF rotation that CGImage ignores), scaled down
+  /// to at most `maxDimension` pixels.
+  static func loadImage(url: URL, maxDimension: CGFloat) -> CGImage? {
+    guard let image = UIImage(contentsOfFile: url.path), image.size.width > 0, image.size.height > 0 else {
+      return nil
+    }
+    let scale = min(1, maxDimension / max(image.size.width, image.size.height))
+    let size = CGSize(width: (image.size.width * scale).rounded(), height: (image.size.height * scale).rounded())
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    format.opaque = false
+    return UIGraphicsImageRenderer(size: size, format: format).image { _ in
+      image.draw(in: CGRect(origin: .zero, size: size))
+    }.cgImage
+  }
+
+  static func aspectFit(_ size: CGSize, in box: CGRect) -> CGRect {
+    guard size.width > 0, size.height > 0 else { return box }
+    let scale = min(box.width / size.width, box.height / size.height)
+    let fitted = CGSize(width: size.width * scale, height: size.height * scale)
+    return CGRect(
+      x: box.midX - fitted.width / 2,
+      y: box.midY - fitted.height / 2,
+      width: fitted.width,
+      height: fitted.height
+    )
   }
 
   /// Output frame: 1920x1080 (16:9) or 1080x1920 (9:16) at most, never upscaled past the

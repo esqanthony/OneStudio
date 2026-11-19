@@ -24,7 +24,15 @@ export function saveSession(session: RecordingSession): void {
 }
 
 export function loadSession(sessionId: string): RecordingSession | null {
-  return readJson<RecordingSession | null>(sessionFile(sessionId, SESSION_FILE), null);
+  const stored = readJson<RecordingSession | null>(sessionFile(sessionId, SESSION_FILE), null);
+  if (!stored) return null;
+  // Fill in fields added after the session was first saved.
+  return {
+    ...stored,
+    slides: stored.slides ?? [],
+    currentSlideId: stored.currentSlideId ?? null,
+    slideLayout: stored.slideLayout ?? 'corner',
+  };
 }
 
 /** All sessions, newest first. */

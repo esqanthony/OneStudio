@@ -47,6 +47,7 @@ export default function RootLayout() {
           <Stack.Screen name="scripts/index" options={{ presentation: 'modal', title: 'Scripts' }} />
           <Stack.Screen name="scripts/[scriptId]" options={{ presentation: 'modal', title: 'Edit script' }} />
           <Stack.Screen name="teleprompter-settings" options={{ presentation: 'modal', title: 'Teleprompter' }} />
+          <Stack.Screen name="slides" options={{ presentation: 'modal', title: 'Slides' }} />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>

@@ -31,6 +31,8 @@ import {
   setAspect,
 } from '@/features/recording/session-logic';
 import { deleteSessionFile, sessionFile } from '@/features/recording/session-storage';
+import { overlayTimeline, showSlide, slideRect, stepSlide } from '@/features/recording/slides-logic';
+import { SlideControls, SlideOverlay } from '@/features/recording/slides-ui';
 import { useRecordingStore } from '@/features/recording/use-recording-store';
 import { TeleprompterPanel } from '@/features/teleprompter/teleprompter-panel';
 import { useTeleprompterStore } from '@/features/teleprompter/use-teleprompter-store';
@@ -148,6 +150,7 @@ export default function RecordScreen() {
               durationMs: result.durationMs ?? 0,
               width: result.width ?? 0,
               height: result.height ?? 0,
+              slideEvents: pending.slideEvents ?? [{ atMs: 0, slideId: current.currentSlideId }],
             })
           );
         } else {
@@ -187,7 +190,7 @@ export default function RecordScreen() {
     }
     const id = newId();
     const file = `take-${id}.mov`;
-    update((s) => ({ ...s, pendingTake: { id, file } }));
+    update((s) => ({ ...s, pendingTake: { id, file, slideEvents: [{ atMs: 0, slideId: s.currentSlideId }] } }));
     setPhase('starting');
     setNotice(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -200,6 +203,33 @@ export default function RecordScreen() {
       update((s) => ({ ...s, pendingTake: null }));
       setPhase('idle');
       setNotice(errorMessage(e));
+    }
+  };
+
+  /** Changes slide; while recording, the change is timed so the video switches at the same moment. */
+  const changeSlide = (slideId: string | null) => {
+    const atMs = phase === 'recording' && startedAt.current ? Date.now() - startedAt.current : null;
+    update((s) => showSlide(s, slideId, atMs));
+    Haptics.selectionAsync();
+  };
+
+  const stepSlides = (delta: -1 | 1) => {
+    const current = useRecordingStore.getState().session;
+    if (current) changeSlide(stepSlide(current, delta));
+  };
+
+  /** Hide the slide, or bring back the one that was showing (or the first). */
+  const lastShownSlide = useRef<string | null>(null);
+  const toggleSlideHidden = () => {
+    const current = useRecordingStore.getState().session;
+    if (!current) return;
+    if (current.currentSlideId) {
+      lastShownSlide.current = current.currentSlideId;
+      changeSlide(null);
+    } else {
+      const visible = current.slides.filter((sl) => !sl.hidden);
+      const back = visible.find((sl) => sl.id === lastShownSlide.current) ?? visible[0];
+      if (back) changeSlide(back.id);
     }
   };
 
@@ -231,10 +261,20 @@ export default function RecordScreen() {
     const subscription = OneStudioCamera.addListener('onJoinProgress', ({ progress }) => setJoinProgress(progress));
     try {
       const outputName = `final-${Date.now()}.mp4`;
+      const rect = current.slideLayout === 'guide' ? null : slideRect(current.aspect, current.slideLayout);
+      const overlays = rect
+        ? overlayTimeline(current).map((segment) => ({
+            imageUri: sessionFile(current.id, segment.file).uri,
+            startMs: segment.startMs,
+            endMs: segment.endMs,
+            rect,
+          }))
+        : [];
       const result = await OneStudioCamera.joinTakesAsync({
         uris: current.takes.map((t) => sessionFile(current.id, t.file).uri),
         aspect: current.aspect,
         outputUri: sessionFile(current.id, outputName).uri,
+        overlays,
       });
       update((s) => ({
         ...s,
@@ -354,6 +394,13 @@ export default function RecordScreen() {
         />
       ) : null}
       <ToolButton icon="textformat.size" label="Prompter" onPress={() => router.push('/teleprompter-settings')} />
+      <ToolButton
+        icon="photo.on.rectangle"
+        label="Slides"
+        active={session.slides.some((sl) => !sl.hidden)}
+        disabled={phase === 'starting' || phase === 'stopping' || phase === 'joining'}
+        onPress={() => router.push('/slides')}
+      />
     </>
   );
 
@@ -441,6 +488,7 @@ export default function RecordScreen() {
 
         <View style={{ height: previewHeight }} className="bg-black">
           {camera_}
+          <SlideOverlay session={session} frameWidth={screenWidth} frameHeight={previewHeight} />
         </View>
 
         <Text className="px-4 pt-1.5 text-center text-[11px] text-muted">
@@ -451,7 +499,10 @@ export default function RecordScreen() {
               : 'Cropped from vertical video at reduced resolution.'}
         </Text>
 
-        <View className="flex-row justify-center gap-1 py-2">{tools}</View>
+        <View className="pt-2">
+          <SlideControls session={session} onStep={stepSlides} onToggleHidden={toggleSlideHidden} />
+        </View>
+        <View className="flex-row flex-wrap justify-center gap-1 py-2">{tools}</View>
         {banner}
         <View className="pt-2">{controls}</View>
         {joiningOverlay}
@@ -467,6 +518,7 @@ export default function RecordScreen() {
     <View className="flex-1 items-center bg-canvas" style={{ paddingTop: insets.top }}>
       <View style={{ width: previewWidth, height: previewHeight }} className="overflow-hidden rounded-2xl bg-black">
         {camera_}
+        <SlideOverlay session={session} frameWidth={previewWidth} frameHeight={previewHeight} />
 
         <View className="absolute left-0 right-0 top-0">
           <View className="flex-row items-start gap-2 pr-3">
@@ -484,6 +536,7 @@ export default function RecordScreen() {
 
         <View className="absolute bottom-0 left-0 right-0 gap-2 pb-5">
           {banner}
+          <SlideControls session={session} onStep={stepSlides} onToggleHidden={toggleSlideHidden} />
           {controls}
         </View>
       </View>
