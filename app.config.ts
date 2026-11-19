@@ -4,8 +4,8 @@ import type { ExpoConfig } from 'expo/config';
  * Values that are not secret but are account-specific. Fill them in once
  * (see docs/setup-from-iphone.md), or override them with environment variables.
  */
-const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '';
-const EXPO_OWNER = process.env.EXPO_OWNER ?? undefined;
+const EAS_PROJECT_ID = process.env.EAS_PROJECT_ID ?? '5bf7c612-e2b2-41f9-879f-d4e7c18af92b';
+const EXPO_OWNER = process.env.EXPO_OWNER ?? 'esqanthony';
 const IOS_BUNDLE_ID = process.env.IOS_BUNDLE_ID ?? 'com.esqanthony.onestudio';
 
 const CAMERA_TEXT = 'OneStudio uses the camera to record your video takes.';
