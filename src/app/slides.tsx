@@ -14,9 +14,9 @@ import { useRecordingStore } from '@/features/recording/use-recording-store';
 import { newId } from '@/lib/id';
 
 const LAYOUTS: { value: SlideLayout; label: string; hint: string }[] = [
-  { value: 'corner', label: 'Corner', hint: 'Small, top-right. In the video.' },
-  { value: 'large', label: 'Large', hint: 'Big, beside you. In the video.' },
-  { value: 'guide', label: 'Only me', hint: 'You see it while recording. Not in the video.' },
+  { value: 'guide', label: 'Only me', hint: 'A visual aid under the camera. Not in the video.' },
+  { value: 'corner', label: 'In video: corner', hint: 'Viewers see it small, top-right.' },
+  { value: 'large', label: 'In video: large', hint: 'Viewers see it big, beside you.' },
 ];
 
 /** Slides for the current recording session: import from Photos, order, layout. */

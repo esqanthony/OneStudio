@@ -31,7 +31,7 @@ export function loadSession(sessionId: string): RecordingSession | null {
     ...stored,
     slides: stored.slides ?? [],
     currentSlideId: stored.currentSlideId ?? null,
-    slideLayout: stored.slideLayout ?? 'corner',
+    slideLayout: stored.slideLayout ?? 'guide',
   };
 }
 

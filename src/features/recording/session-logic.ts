@@ -34,7 +34,7 @@ export function createSession(params: {
     showTeleprompter: true,
     slides: [],
     currentSlideId: null,
-    slideLayout: 'corner',
+    slideLayout: 'guide',
     output: null,
   };
 }

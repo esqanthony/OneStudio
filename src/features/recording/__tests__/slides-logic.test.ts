@@ -5,7 +5,7 @@ import { addSlides, deck, moveSlide, overlayTimeline, removeSlide, showSlide, sl
 import type { RecordingSession, Take } from '../types';
 
 const withSlides = (): RecordingSession =>
-  addSlides(createSession({ id: 's', now: 0, caps: null, aspect: '16:9' }), [
+  addSlides({ ...createSession({ id: 's', now: 0, caps: null, aspect: '16:9' }), slideLayout: 'corner' }, [
     { id: 'a', file: 'slide-a.jpg' },
     { id: 'b', file: 'slide-b.jpg' },
     { id: 'c', file: 'slide-c.jpg' },
@@ -53,6 +53,10 @@ describe('slides', () => {
     let s: RecordingSession = { ...withSlides(), pendingTake: { id: '1', file: 'take-1.mov', slideEvents: [{ atMs: 0, slideId: 'a' }] } };
     s = showSlide(s, 'b', null);
     expect(s.pendingTake?.slideEvents).toEqual([{ atMs: 0, slideId: 'b' }]);
+  });
+
+  it('new sessions default to slides only you see', () => {
+    expect(createSession({ id: 's', now: 0, caps: null }).slideLayout).toBe('guide');
   });
 
   it('guide layout keeps slides out of the video', () => {

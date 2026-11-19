@@ -52,12 +52,14 @@ helps), and send it to Claude.
 3. Deny camera access (Settings → OneStudio), open the camera. ✅ "Camera access is off" with an
    **Open Settings** button.
 
-## F. Slides in the video
+## F. Slides as a visual aid (only you see them)
 1. Export your deck as images into Photos (Keynote: Share → Export → Images; Google Slides: download each slide).
-2. On the camera, tap **Slides** → **Add slides from Photos**, and pick them **in order**.
-3. Choose **Corner** or **Large**. Go back. ✅ The first slide shows on the preview where it'll be in the video.
-4. Record a take and tap **›** a couple of times while talking. Tap the middle **1 / 5** button to hide the slide, and again to bring it back.
+2. On the camera, tap **Slides** → **Add slides from Photos**, and pick them **in order**. Leave **Only me** selected.
+3. Go back. ✅ In 16:9 the slide shows right under the front camera, above the preview (and above the script,
+   if you use one). In 9:16 it shows at the top of the preview.
+4. Record a take and tap **›** while talking. Tap the middle **1 / 5** button to hide the slide, and again to bring it back.
    ✅ Recording keeps going.
 5. Record a second take. Delete it. ✅ The slide goes back to the one that was up when that take started.
-6. Tap **Done**. ✅ In the video, each slide appears and changes at the moment you tapped.
-7. Try **Only me**: ✅ the slide shows on screen with a dashed outline while recording, but not in the finished video.
+6. Tap **Done**. ✅ The finished video has **no slides** in it.
+7. Optional: pick **In video: corner** or **In video: large** to have viewers see them too.
+   ✅ After Done, the slides appear in the video at the moments you tapped.

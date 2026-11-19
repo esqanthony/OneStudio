@@ -5,9 +5,27 @@ import { sessionFile } from './session-storage';
 import { deck, slideRect } from './slides-logic';
 import type { RecordingSession } from './types';
 
+/** The slide currently up, if any. */
+export function currentSlideUri(session: RecordingSession): string | null {
+  const slide = session.slides.find((s) => s.id === session.currentSlideId);
+  return slide ? sessionFile(session.id, slide.file).uri : null;
+}
+
 /**
- * The current slide drawn over the camera preview, at the same place and size it will have in
- * the video. In "guide" layout it's marked as visible only to you.
+ * "Only me" slide: shown just under the front camera so your eyes stay near the lens.
+ * Never recorded.
+ */
+export function GuideSlide({ uri, height }: { uri: string; height: number }) {
+  return (
+    <View style={{ height }} className="overflow-hidden rounded-xl bg-black/80 p-1">
+      <Image source={{ uri }} style={{ flex: 1 }} contentFit="contain" accessibilityLabel="Current slide" />
+    </View>
+  );
+}
+
+/**
+ * Slide drawn over the camera preview at the place and size it will have in the video
+ * (Corner / Large layouts only).
  */
 export function SlideOverlay({
   session,
@@ -18,10 +36,9 @@ export function SlideOverlay({
   frameWidth: number;
   frameHeight: number;
 }) {
-  const slide = session.slides.find((s) => s.id === session.currentSlideId);
-  if (!slide) return null;
-  const guide = session.slideLayout === 'guide';
-  const rect = slideRect(session.aspect, guide ? 'large' : session.slideLayout);
+  const uri = currentSlideUri(session);
+  if (!uri || session.slideLayout === 'guide') return null;
+  const rect = slideRect(session.aspect, session.slideLayout);
   return (
     <View
       pointerEvents="none"
@@ -31,20 +48,8 @@ export function SlideOverlay({
         top: rect.y * frameHeight,
         width: rect.width * frameWidth,
         height: rect.height * frameHeight,
-        opacity: guide ? 0.85 : 1,
-      }}
-      className={guide ? 'rounded-lg border-2 border-dashed border-accent' : ''}>
-      <Image
-        source={{ uri: sessionFile(session.id, slide.file).uri }}
-        style={{ flex: 1, borderRadius: 6 }}
-        contentFit="contain"
-        accessibilityLabel="Current slide"
-      />
-      {guide ? (
-        <View className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5">
-          <Text className="text-[10px] font-bold text-accent">Only you see this</Text>
-        </View>
-      ) : null}
+      }}>
+      <Image source={{ uri }} style={{ flex: 1, borderRadius: 6 }} contentFit="contain" accessibilityLabel="Current slide" />
     </View>
   );
 }

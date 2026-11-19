@@ -32,7 +32,7 @@ import {
 } from '@/features/recording/session-logic';
 import { deleteSessionFile, sessionFile } from '@/features/recording/session-storage';
 import { overlayTimeline, showSlide, slideRect, stepSlide } from '@/features/recording/slides-logic';
-import { SlideControls, SlideOverlay } from '@/features/recording/slides-ui';
+import { currentSlideUri, GuideSlide, SlideControls, SlideOverlay } from '@/features/recording/slides-ui';
 import { useRecordingStore } from '@/features/recording/use-recording-store';
 import { TeleprompterPanel } from '@/features/teleprompter/teleprompter-panel';
 import { useTeleprompterStore } from '@/features/teleprompter/use-teleprompter-store';
@@ -326,6 +326,8 @@ export default function RecordScreen() {
   const script = scripts.find((s) => s.id === session.scriptId) ?? null;
   const showPrompt = session.showTeleprompter && script !== null;
   const cropSize = session.strategy === 'crop' ? cropOutputSize(caps, session.position) : null;
+  // "Only me" slides sit right under the front camera, above the teleprompter.
+  const guideSlideUri = session.slideLayout === 'guide' ? currentSlideUri(session) : null;
 
   const camera_ = (
     <OneStudioCameraView
@@ -471,16 +473,23 @@ export default function RecordScreen() {
           <View className="pt-1">{closeButton}</View>
         </View>
 
-        {/* Teleprompter sits between the lens and the landscape preview, so eyes stay near the camera. */}
-        <View className="mt-2 flex-1" onLayout={(e) => setPanelHeight(Math.round(e.nativeEvent.layout.height))}>
-          {showPrompt && panelHeight > 0 ? (
+        {/* Slide and teleprompter sit between the lens and the landscape preview, so eyes stay near the camera. */}
+        <View className="mt-2 flex-1 gap-2 px-2" onLayout={(e) => setPanelHeight(Math.round(e.nativeEvent.layout.height))}>
+          {guideSlideUri && panelHeight > 0 ? (
+            <>
+              <GuideSlide uri={guideSlideUri} height={showPrompt ? Math.round(panelHeight * 0.5) : panelHeight} />
+              {showPrompt ? (
+                <View className="overflow-hidden rounded-xl">{prompt(panelHeight - Math.round(panelHeight * 0.5) - 8)}</View>
+              ) : null}
+            </>
+          ) : showPrompt && panelHeight > 0 ? (
             prompt(panelHeight)
           ) : (
             <Pressable
               onPress={() => router.push({ pathname: '/scripts', params: { pick: '1' } })}
               className="flex-1 items-center justify-center px-8">
               <Text className="text-center text-base text-muted">
-                {script ? 'Teleprompter hidden.' : 'Tap to add a script. It shows here, right under the camera.'}
+                {script ? 'Teleprompter hidden.' : 'Tap to add a script, or use Slides. They show here, right under the camera.'}
               </Text>
             </Pressable>
           )}
@@ -527,7 +536,16 @@ export default function RecordScreen() {
             </View>
             <View className="pt-1">{closeButton}</View>
           </View>
-          {showPrompt ? <View className="mx-3 mt-2 overflow-hidden rounded-xl">{prompt(Math.round(previewHeight * 0.26))}</View> : null}
+          {guideSlideUri ? (
+            <View className="mx-3 mt-2">
+              <GuideSlide uri={guideSlideUri} height={Math.round(previewHeight * (showPrompt ? 0.18 : 0.24))} />
+            </View>
+          ) : null}
+          {showPrompt ? (
+            <View className="mx-3 mt-2 overflow-hidden rounded-xl">
+              {prompt(Math.round(previewHeight * (guideSlideUri ? 0.2 : 0.26)))}
+            </View>
+          ) : null}
         </View>
 
         <View className="absolute right-2 gap-1 rounded-2xl bg-black/35 py-1" style={{ top: previewHeight * 0.36 }}>
